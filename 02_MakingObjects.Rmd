@@ -1,0 +1,97 @@
+---
+title: "combining tpm and prediction for all samples"
+output: html_document
+date: "2025-02-18"
+---
+
+# Set up
+```{r}
+rm(list=ls())
+library(tidyverse)
+```
+
+# Identification Table
+```{r}
+SampleKey<-read.csv("/Users/alinaklineschoder/Desktop/AVSampleKey.csv")%>%
+  separate_longer_delim(col="Samples..mean.if.multiple.",delim = ",")%>%
+  dplyr::mutate(Samples..mean.if.multiple.=gsub(" ","",Samples..mean.if.multiple.))
+
+AllCounts<-read.csv("/Users/alinaklineschoder/Desktop/Data_AnalyticalValidation_Organized/AllCounts.csv")%>%
+  column_to_rownames(var="Gene")
+
+
+AllScores<-read.csv("/Users/alinaklineschoder/Desktop/Data_AnalyticalValidation_Organized/AllScores.csv")
+
+Vec<-AllScores$AR_Risk_Score
+names(Vec)<-gsub("-","\\.",AllScores$X)
+```
+
+## Finding the correct samples for LR
+```{r}
+LR<-read.csv("/Users/alinaklineschoder/Desktop/AVLR.csv")%>%
+  pivot_longer(cols=starts_with("CP"))%>%
+  mutate(ID=paste(name,X.1))%>%
+  select(-c(name,X.1))%>%
+  pivot_wider(names_from = ID,values_from = value)%>%
+  column_to_rownames(var="X")
+```
+
+
+
+# Making Prediction Object
+```{r}
+Full<-data.frame()
+for(sample in unique(SampleKey$Sample.Name)){
+  samples<-SampleKey%>%
+    filter(Sample.Name==sample)%>%
+    pull(Samples..mean.if.multiple.)
+  samples <- iconv(samples, from = "UTF-8", to = "ASCII", sub = " ")  # replace non-breaking with space
+  samples <- gsub("\\s+", "", samples)  # now remove all whitespace
+  samples <- gsub("-","\\.",samples)
+  if(sum(samples=="Missing?")==0){
+    
+  scores <- Vec[samples]
+  me <- mean(scores)
+  
+  df<-data.frame(Sample=sample,Score=me)
+  if(nrow(Full)==0){
+    Full<-df
+  }else{
+    Full<-bind_rows(df,Full)
+  }
+  }
+}
+
+write.csv(Full,"/Users/alinaklineschoder/Desktop/Data_AnalyticalValidation_Organized/FinalScores.csv")
+```
+
+
+# Making Counts object
+```{r}
+Full<-data.frame()
+for(sample in unique(SampleKey$Sample.Name)){
+  samples<-SampleKey%>%
+    filter(Sample.Name==sample)%>%
+    pull(Samples..mean.if.multiple.)
+  samples <- iconv(samples, from = "UTF-8", to = "ASCII", sub = " ")  # replace non-breaking with space
+  samples <- gsub("\\s+", "", samples)  # now remove all whitespace
+  samples <- gsub("-","\\.",samples)
+  if(sum(samples=="Missing?")==0){
+    counts <- as.data.frame(AllCounts[, samples, drop = FALSE])
+    row_means <- rowMeans(counts, na.rm = TRUE)
+    df<-data.frame(gene=rownames(AllCounts),temp=row_means)
+    colnames(df)<-c("gene",sample)
+    if(nrow(Full)==0){
+      Full<-df
+    }else{
+      Full<-full_join(df,Full)
+    }
+  }
+  
+}
+
+write.csv(Full,"/Users/alinaklineschoder/Desktop/Data_AnalyticalValidation_Organized/FinalCounts.csv")
+
+```
+
+

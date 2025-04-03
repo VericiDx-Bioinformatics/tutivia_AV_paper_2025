@@ -1,0 +1,153 @@
+---
+title: "combining tpm and prediction for all samples"
+output: html_document
+date: "2025-02-18"
+---
+
+# Set up
+```{r}
+rm(list=ls())
+library(tidyverse)
+source("~/Documents/Projects/AnalyticalValidation/AV_Plots.R")
+
+
+```
+
+# Read in counts
+```{r}
+AllCounts<-read.csv("/Users/alinaklineschoder/Desktop/Data_AnalyticalValidation_Organized/FinalCounts.csv")%>%
+  dplyr::select(-c("X"))%>%
+  column_to_rownames(var="gene")
+
+SampleInfo<-read.csv("/Users/alinaklineschoder/Desktop/AVSampleKey.csv")%>%
+  separate(col="Parameter",into = c("Parameter","trash"),sep = "_")
+
+SampleInfo$Category<-gsub("RNAStabilityTime","Time",SampleInfo$Category)
+SampleInfo$Category<-gsub("RNAStabilityFT","Freeze/Thaw",SampleInfo$Category)
+SampleInfo$Category<-gsub("Interference","Interference",SampleInfo$Category)
+SampleInfo$Category<-gsub("RNAInput","RNA Input",SampleInfo$Category)
+SampleInfo$Category<-gsub("Batch","Batch Size",SampleInfo$Category)
+SampleInfo$Category<-gsub("LibraryInput","Library Input",SampleInfo$Category)
+
+SampleInfo$Category<-factor(SampleInfo$Category,levels=c("Freeze/Thaw",
+                                                         "Time",
+                                                         "Interference",
+                                                         "RNA Input",
+                                                         "Library Input",
+                                                         "Batch Size",
+                                                         "Repeatability",
+                                                       "Reproducibility"))
+
+
+SampleInfo$Category_Broad<-SampleInfo$Category
+SampleInfo[SampleInfo$Category_Broad%in%c("Freeze/Thaw","Time"),"Category_Broad"]<-"RNA Stability"
+SampleInfo[SampleInfo$Category_Broad%in%c("Interference","RNA Input"),"Category_Broad"]<-"Library Preparation"
+SampleInfo[SampleInfo$Category_Broad%in%c("Library Input","Batch Size"),"Category_Broad"]<-"Sequencing Characterization"
+
+SampleInfo[SampleInfo$Category_Broad%in%c("Repeatability","Reproducibility"),"Category_Broad"]<-""
+
+```
+
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(rlang)
+
+# Filter genes by variance
+gene_var <- apply(AllCounts, 1, var)
+Count_Filt <- AllCounts[gene_var > 0.5, ]
+
+# Transpose and log-transform
+counts_t <- t(Count_Filt)
+log_counts <- log1p(counts_t)
+
+
+# PCA
+pca_result <- prcomp(log_counts, scale. = TRUE)
+
+# Put result in a data frame
+pca_df <- data.frame(PC1 = pca_result$x[,1],
+                     PC2 = pca_result$x[,2],
+                     Sample.Name = rownames(pca_result$x))
+
+# Join with metadata
+pca_df <- left_join(pca_df, SampleInfo)
+
+```
+
+# plot all of the variables of interest
+```{r}
+ggp <- list()
+ggpA<- ggplot(pca_df, aes(x = PC1, y = PC2)) +
+    geom_point(size = 0.5, color = "lightgray") +
+    geom_point(data = pca_df,
+               aes(color = as.factor(Control)),
+               size = 0.5) +
+    stat_ellipse(data = pca_df,
+                 aes(color = as.factor(Control))) +
+    theme_minimal() +
+    theme(legend.position = "none",
+          panel.grid = element_blank(),
+          axis.text = element_blank(),
+          axis.title = element_blank(),
+          plot.title = element_text(size=12,face = "bold"))+
+  scale_color_manual(values=col)
+
+
+for (val in levels(SampleInfo$Category)) {
+  ggp[[val]] <- ggplot(pca_df, aes(x = PC1, y = PC2)) +
+    geom_point(size = 0.5, color = "lightgray") +
+    geom_point(data = pca_df %>% filter(Category == val),
+               aes(color = as.factor(Parameter)),
+               size = 0.5) +
+    stat_ellipse(data = pca_df %>% filter(Category == val),
+                 aes(color = as.factor(Parameter))) +
+    theme_minimal() +
+    ggtitle(paste(val)) +
+    theme(legend.position = "none",
+          panel.grid = element_blank(),
+          axis.text = element_blank(),
+          axis.title = element_blank(),
+          plot.title = element_text(size=8))+
+  scale_color_manual(values=col)
+}
+
+```
+
+```{r}
+library(cowplot)
+library(ggplot2)
+
+# Assuming ggp is your list of 8 plots, 2 per row
+
+# Create rows
+row1 <- plot_grid(plotlist = ggp[1:2], ncol = 2)
+row2 <- plot_grid(plotlist = ggp[3:4], ncol = 2)
+row3 <- plot_grid(plotlist = ggp[5:6], ncol = 2)
+row4 <- plot_grid(plotlist = ggp[7:8], ncol = 2)
+
+# Custom row labels
+row_labels <- c("RNA Stability", "Library\nPreparation", "Sequencing\nCharacterization", " ")
+
+# Create horizontally oriented label plots
+label_plots <- lapply(row_labels, function(label) {
+  ggdraw() + 
+    draw_label(label, x = 1, hjust = 1, vjust = 1, angle = 0, size = 10,fontface="bold")
+})
+
+# Combine label and row into one horizontal plot per row
+rows_with_labels <- mapply(function(label_plot, row_plot) {
+  plot_grid(label_plot, row_plot, rel_widths = c(0.2, 1), ncol = 2, align = "v")
+}, label_plots, list(row1, row2, row3, row4), SIMPLIFY = FALSE)
+
+# Stack all rows vertically
+final_plot <- plot_grid(plotlist = rows_with_labels, ncol = 1, align = "h")
+
+# Print the final figure
+
+cowplot::plot_grid(ggpA,final_plot+theme(plot.margin = margin(0,0,0,10)),nrow=1,labels = c("A","B"))
+
+```
+
+

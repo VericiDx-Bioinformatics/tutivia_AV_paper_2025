@@ -1,0 +1,58 @@
+---
+title: "combining tpm and prediction for all samples"
+output: html_document
+date: "2025-02-18"
+---
+
+# Set up
+```{r}
+rm(list=ls())
+library(tidyverse)
+```
+
+
+# Loading and Saving from Data_AnalyticalValidation
+```{r}
+loc<-"/Users/alinaklineschoder/Desktop/AV_Data/"
+fi<-(list.files(loc))
+Runs<-gsub("_QC_Summary.csv","",fi[grepl("QC",fi)])
+
+
+PRED_All<-data.frame()
+for(run in c("NextSeq2000_VL15-VL25_PQ_EIN23-001_2023-04-24_202304272035","92-93849_NextSeq2000_23-001_2025-03-27_VL00199-CT1-TNPT_PatientOnly_202503281629",Runs)){
+  setwd(loc)
+  FILES<-fi[grepl(run,fi,ignore.case = T)]
+  VST_Fil<-FILES[grepl("VST.csv",FILES)]
+  PRED_Fil<-FILES[grepl("prediction_tutivia.csv|prediction_tutevia.csv",FILES)]
+  QC_Fil<-FILES[grepl("QC_Summary.csv",FILES)]
+  if(length(QC_Fil)>0){
+    
+    QC<-read.csv(QC_Fil)
+    QC[] <- lapply(QC, as.character)
+  }else{
+    QC<-data.frame()
+  }
+  
+  VST<-read.csv(VST_Fil)
+  Pred<-read.csv(PRED_Fil)
+  colnames(VST)[1]<-"Gene"
+  if(nrow(PRED_All)==0){
+    QC_All<-QC
+    VST_All<-VST
+    PRED_All<-Pred
+    Samples<-data.frame(Sample=setdiff(colnames(VST),"Gene"),Run=run)
+  }else{
+    QC_All<-bind_rows(QC_All,QC)
+    PRED_All<-bind_rows(PRED_All,Pred)
+    VST_All<-left_join(VST_All,VST)
+    Samples<-bind_rows(data.frame(Sample=setdiff(colnames(VST),"Gene"),Run=run),Samples)
+  }
+  
+}
+
+setwd("/Users/alinaklineschoder/Desktop/Data_AnalyticalValidation_Organized/")
+write.csv(VST_All,file = "AllCounts.csv")
+
+setwd("/Users/alinaklineschoder/Desktop/Data_AnalyticalValidation_Organized/")
+write.csv(PRED_All,file = "AllScores.csv")
+```
