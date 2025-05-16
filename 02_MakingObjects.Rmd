@@ -26,18 +26,6 @@ Vec<-AllScores$AR_Risk_Score
 names(Vec)<-gsub("-","\\.",AllScores$X)
 ```
 
-## Finding the correct samples for LR
-```{r}
-LR<-read.csv("/Users/alinaklineschoder/Desktop/AVLR.csv")%>%
-  pivot_longer(cols=starts_with("CP"))%>%
-  mutate(ID=paste(name,X.1))%>%
-  select(-c(name,X.1))%>%
-  pivot_wider(names_from = ID,values_from = value)%>%
-  column_to_rownames(var="X")
-```
-
-
-
 # Making Prediction Object
 ```{r}
 Full<-data.frame()

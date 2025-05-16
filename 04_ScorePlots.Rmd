@@ -1,0 +1,75 @@
+---
+title: "Score plots"
+output: html_document
+date: "2025-02-18"
+---
+
+# Set up
+```{r}
+rm(list=ls())
+library(tidyverse)
+source("~/Documents/Projects/AnalyticalValidation/AV_Plots.R")
+```
+
+# set up scores
+```{r}
+
+```
+
+
+# Plotting and Saving
+```{r}
+### Freeze/Thaw
+
+
+### Storage Time
+ggp2<-ScorePlot(Full %>% filter(Category == "RNA Stability - Storage Time"))+xlab("-80\u00B0 Storage Time")
+ggsave(plot=ggp2,filename = "/Users/alinaklineschoder/Desktop/Data_AnalyticalValidation_Organized/Figures/Scores_Time.png",bg="white",width = 10,height = 4)
+
+### Interference
+ggp2<-ScorePlot(Full %>% filter(Category == "Library Preparation - Interference"))+
+  xlab("Interference")
+ggsave(plot=ggp2,filename = "/Users/alinaklineschoder/Desktop/Data_AnalyticalValidation_Organized/Figures/Scores_Interference.png",bg="white",width = 10,height = 4)
+
+### RNA Input
+ggp2<-ScorePlot(Full %>% filter(Category == "Library Preparation - RNA Input"))+
+  xlab("RNA Input (ng)")
+ggsave(plot=ggp2,filename = "/Users/alinaklineschoder/Desktop/Data_AnalyticalValidation_Organized/Figures/Scores_RNAInput.png",bg="white",width = 10,height = 4)
+
+### Library Input
+ggp2<-ScorePlot(Full %>% filter(Category == "Sequencing Characterization - Library Input"))+
+  xlab("Library Input (pM cDNA)")
+
+ggsave(plot=ggp2,filename = "/Users/alinaklineschoder/Desktop/Data_AnalyticalValidation_Organized/Figures/Scores_LibraryInput.png",bg="white",width = 10,height = 4)
+
+### Batch Size
+ggp2<-ScorePlot(Full %>% filter(Category == "Sequencing Characterization - Batch Size"))+
+  xlab("Batch Size (N)")
+
+ggsave(plot=ggp2,filename = "/Users/alinaklineschoder/Desktop/Data_AnalyticalValidation_Organized/Figures/Scores_Batch.png",bg="white",width = 10,height = 4)
+
+### Reproducibility
+ggp2<-ScorePlot(Full %>% filter(Category == "Reproducibility"))+
+  xlab("Batch")
+
+ggsave(plot=ggp2,filename = "/Users/alinaklineschoder/Desktop/Data_AnalyticalValidation_Organized/Figures/Reproducibility.png",bg="white",width = 10,height = 4)
+
+ggp2 <- ggplot(Full %>% filter(Category == "Repeatability"), 
+               aes(y = Score, x = Parameter, color = Control, group = Control)) +
+  geom_hline(yintercept = 50, linetype = "dashed", color = "red", size = 0.8) +
+  stat_summary(geom = "pointrange", fun.data = mean_se) +  # or median_hilow if using median
+  stat_summary(geom = "line", fun = mean) +
+  scale_color_manual(values = col) + 
+    ylim(0, 100) +
+    # Labels for "High" and "Low"
+    annotate("text", x = Inf, y = 100, label = "High Risk", hjust = 1.1, vjust = 1, 
+             size = 3, fontface = "bold", color = "black") +
+    annotate("text", x = Inf, y = 0, label = "Low Risk", hjust = 1.1, vjust = 0, 
+             size = 3, fontface = "bold", color = "black")+ 
+    ylab("Tutivia\u2122 Risk Score")+
+    Paired_Theme+
+  xlab("Batch")
+
+ggsave(plot=ggp2,filename = "/Users/alinaklineschoder/Desktop/Data_AnalyticalValidation_Organized/Figures/Scores_Precision.png",bg="white",width = 4,height = 4)
+```
+

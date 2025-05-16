@@ -8,7 +8,7 @@ date: "2025-02-18"
 ```{r}
 rm(list=ls())
 library(tidyverse)
-source("~/Documents/Projects/AnalyticalValidation/AV_Plots.R")
+source("~/Documents/Projects/tutivia_AV_paper_2025/AV_Plots.R")
 ```
 
 # Read in counts
@@ -35,12 +35,10 @@ FT<-left_join(FT_Counts,FT_Meta)%>%
   dplyr::select(-c(Sample.Name))%>%
   pivot_wider(names_from = Parameter,values_from = value)%>%
   rowwise()%>%
-  mutate(FT=100*sd(c(`2FT`,`1FT`))/mean(c(`2FT`,`1FT`)))%>%
-  select(Gene,Control,FT)%>%
+  mutate(FT2=100*sd(c(`2FT`,`1FT`))/mean(c(`2FT`,`1FT`)),
+         FT1=100*sd(c(`1FT`,`1FT`))/mean(c(`1FT`,`1FT`)))%>%
+  select(Gene,Control,FT2,FT1)%>%
   mutate(Type="RNA Stability - Freeze/Thaw")
-
-Tab<-FT%>%
-  pivot_wider(names_from = Control,values_from = FT)
 ```
 
 ### Table 2. Over 6mo/12mo
@@ -56,14 +54,15 @@ Time<-left_join(Time_Counts,Time_Meta)%>%
   dplyr::select(-c(Sample.Name))%>%
   pivot_wider(names_from = Parameter,values_from = value)%>%
   rowwise()%>%
-  mutate(`6mo`=100*sd(c(T0,`5D`,`17D`,`1M`,`3M`,`6M`))/mean(c(T0,`5D`,`17D`,`1M`,`3M`,`6M`)),
-         `12mo`=100*sd(c(T0,`5D`,`17D`,`1M`,`3M`,`6M`,`12M`))/mean(c(T0,`5D`,`17D`,`1M`,`3M`,`6M`,`12M`)))%>%
-  select(Gene,`6mo`,`12mo`,Control)%>%
+  mutate(
+    `5d`=100*sd(c(T0,`5D`))/mean(c(T0,`5D`)),
+    `15d`=100*sd(c(T0,`5D`,`17D`))/mean(c(T0,`5D`,`17D`)),
+    `1mo`=100*sd(c(T0,`5D`,`17D`,`1M`))/mean(c(T0,`5D`,`17D`,`1M`)),
+    `3mo`=100*sd(c(T0,`5D`,`17D`,`1M`,`3M`))/mean(c(T0,`5D`,`17D`,`1M`,`3M`)),
+    `6mo`=100*sd(c(T0,`5D`,`17D`,`1M`,`3M`,`6M`))/mean(c(T0,`5D`,`17D`,`1M`,`3M`,`6M`)),
+    `12mo`=100*sd(c(T0,`5D`,`17D`,`1M`,`3M`,`6M`,`12M`))/mean(c(T0,`5D`,`17D`,`1M`,`3M`,`6M`,`12M`)))%>%
+  select(Gene,`15d`,`5d`,`1mo`,`3mo`,`6mo`,`12mo`,Control)%>%
   mutate(Type="RNA Stability - Time")
-
-Tab<-Time%>%
-  select(-c(`6mo`))%>%
-  pivot_wider(names_from = Control,values_from = `12mo`)
 ```
 
 ### Table 3. +/- DNASE
@@ -79,12 +78,11 @@ DNAse<-left_join(DNAse_Counts,DNAse_Meta)%>%
   dplyr::select(-c(Sample.Name))%>%
   pivot_wider(names_from = Parameter,values_from = value)%>%
   rowwise()%>%
-  mutate(DNASE=100*sd(c(W,WO))/mean(c(W,WO)))%>%
-  select(Gene,DNASE,Control)%>%
+  mutate(WO_DNASE=100*sd(c(W,WO))/mean(c(W,WO)),
+         W_DNASE=100*sd(c(W,W))/mean(c(W,W)))%>%
+  select(Gene,WO_DNASE,W_DNASE,Control)%>%
   mutate(Type="Interference")
 
-Tab<-DNAse%>%
-  pivot_wider(names_from = Control,values_from = DNASE)
 ```
 
 ### Table 4. RNA Input
@@ -100,15 +98,13 @@ RI<-left_join(RI_Counts,RI_Meta)%>%
   dplyr::select(-c(Sample.Name))%>%
   pivot_wider(names_from = Parameter,values_from = value)%>%
   rowwise()%>%
-  mutate(RI_400_500=100*sd(c(RI400,RI500))/mean(c(RI400,RI500)),
-         RI_500_600=100*sd(c(RI600,RI500))/mean(c(RI600,RI500)),
-         All=100*sd(c(RI400,RI600,RI500))/mean(c(RI400,RI600,RI500)))%>%
-  select(Gene,RI_400_500,RI_500_600,All,Control)%>%
+  mutate(RI400 = 100*sd(c(RI400,RI500))/mean(c(RI400,RI500)),
+         RI600 = 100*sd(c(RI600,RI500))/mean(c(RI600,RI500)),
+         RI720 = 100*sd(c(RI720,RI500))/mean(c(RI720,RI500)),
+         RI320 = 100*sd(c(RI320,RI500))/mean(c(RI320,RI500)),
+         RI500 = 100*sd(c(RI500,RI500))/mean(c(RI500,RI500)))%>%
+  select(Gene,RI400,RI600,RI720,RI320,RI500,Control)%>%
   mutate(Type="RNA Input")
-
-Tab<-RI%>%
-  select(-c(All,RI_400_500))%>%
-  pivot_wider(names_from = Control,values_from = RI_500_600)
 ```
 ### Table 5. Library Input
 ```{r}
@@ -123,15 +119,14 @@ LI<-left_join(LI_Counts,LI_Meta)%>%
   dplyr::select(-c(Sample.Name))%>%
   pivot_wider(names_from = Parameter,values_from = value)%>%
   rowwise()%>%
-  mutate(LI_675_750=100*sd(c(LI675,LI750))/mean(c(LI675,LI750)),
-         LI_825_750=100*sd(c(LI825,LI750))/mean(c(LI825,LI750)),
-         All=100*sd(c(LI675,LI825,LI750))/mean(c(LI675,LI825,LI750)))%>%
-  select(Gene,LI_675_750,LI_825_750,All,Control)%>%
+  mutate(LI6075 = 100*sd(c(LI6075,LI750))/mean(c(LI6075,LI750)),
+         LI9075 = 100*sd(c(LI9075,LI750))/mean(c(LI9075,LI750)),
+         LI675 = 100*sd(c(LI675,LI750))/mean(c(LI675,LI750)),
+         LI825 = 100*sd(c(LI825,LI750))/mean(c(LI825,LI750)),
+         LI750 = 100*sd(c(LI750,LI750))/mean(c(LI750,LI750))
+         )%>%
+  select(Gene,LI6075,LI9075,LI675,LI825,LI750,Control)%>%
   mutate(Type="Library Input")
-
-Tab<-LI%>%
-  select(-c(All,LI_825_750))%>%
-  pivot_wider(names_from = Control,values_from = LI_675_750)
 ```
 ### Table 6. Batch
 ```{r}
@@ -146,15 +141,13 @@ Batch<-left_join(Batch_Counts,Batch_Meta)%>%
   dplyr::select(-c(Sample.Name))%>%
   pivot_wider(names_from = Parameter,values_from = value)%>%
   rowwise()%>%
-  mutate(N_25_32=100*sd(c(N25,N32))/mean(c(N25,N32)),
-         N_32_39=100*sd(c(N39,N32))/mean(c(N39,N32)),
-         All=100*sd(c(N39,N32,N25))/mean(c(N25,N39,N32)))%>%
-  select(Gene,N_25_32,N_32_39,All,Control)%>%
+  mutate(N25 = 100*sd(c(N25,N32))/mean(c(N25,N32)),
+         N16 = 100*sd(c(N16,N32))/mean(c(N16,N32)),
+         N64 = 100*sd(c(N64,N32))/mean(c(N64,N32)),
+         N39 = 100*sd(c(N39,N32))/mean(c(N39,N32)),
+         N32 = 100*sd(c(N32,N32))/mean(c(N32,N32)))%>%
+  select(Gene,N25,N16,N64,N39,N32,Control)%>%
   mutate(Type="Batch Size")
-
-Tab<-Batch%>%
-  select(-c(All,N_25_32))%>%
-  pivot_wider(names_from = Control,values_from = N_32_39)
 ```
 
 ### Table 7. Repeatability
@@ -178,14 +171,6 @@ Repeat<-left_join(Repeat_Counts,Repeat_Meta)%>%
   mutate(Type="Repeatability")%>%
   pivot_wider(names_from = Grouping,values_from = Repeat)
 
-Tab<-Repeat<-left_join(Repeat_Counts,Repeat_Meta)%>%
-  dplyr::select(-c(Sample.Name,Trash))%>%
-  group_by(Grouping,Gene,Control)%>%
-  summarize(Repeat=100*sd(value)/mean(value))%>%
-  ungroup()%>%
-  mutate(ID=paste(Grouping,Control))%>%
-  dplyr::select(-c(Grouping,Control))%>%
-  pivot_wider(names_from = ID,values_from = Repeat)
 ```
 
 ### Table 8. Reproducibility
@@ -204,9 +189,6 @@ Repro<-left_join(Repro_Counts,Repro_Meta)%>%
   mutate(Reproducibility=100*sd(c(L1R1,L2R1,L1R2,L2R2))/mean(c(L1R1,L2R1,L1R2,L2R2)))%>%
   select(Gene,Control,Reproducibility)%>%
   mutate(Type="Reproducibility")
-
-Tab<-Repro%>%
-  pivot_wider(names_from = Control,values_from = Reproducibility)
 ```
 
 ## Combining All tables
@@ -220,41 +202,8 @@ write.csv(AllTabs,"/Users/alinaklineschoder/Desktop/Data_AnalyticalValidation_Or
 
 ## Plotting the chosen genes summary
 ```{r}
-Filt<-AllTabs%>%
-  filter(name%in%c("FT","12mo","DNASE","All","Mean","Reproducibility"))
-
-Filt$Full_Type<-Filt$Type
-Filt[Filt$Type%in%c("RNA Stability - Freeze/Thaw","RNA Stability - Time"),"Full_Type"]<-"RNA Stability"
-Filt[Filt$Type%in%c("Interference","RNA Input"),"Full_Type"]<-"Library Preparation"
-Filt[Filt$Type%in%c("Batch Size","Library Input"),"Full_Type"]<-"Sequencing Characterization"
 
 
-Filt$Small_Type<-gsub("RNA Stability - ","",Filt$Type)
-Filt$Small_Type<-gsub("Time","-80 Storage Time",Filt$Small_Type)
-Filt$Small_Type<-gsub("Repeatability","Mean",Filt$Small_Type)
 
-Filt$Full_Type<-factor(Filt$Full_Type,levels=c("RNA Stability","Library Preparation","Sequencing Characterization","Repeatability","Reproducibility"))
-
-Filt$Small_Type<-factor(Filt$Small_Type,levels=rev(c("Freeze/Thaw","-80 Storage Time","Interference","RNA Input","Library Input","Batch Size","Mean","Reproducibility")))
-
-
-ggplot(Filt, aes(x = Control, fill = value, y = Small_Type)) +
-  geom_tile() + theme_minimal()+
-  theme(
-    legend.position = "right",
-    axis.text.x = element_blank(),
-    strip.text.y.left = element_text(angle = 0, hjust = 1),
-    strip.text.x = element_text(angle = 90, hjust = 1, vjust = 1),
-    strip.background = element_blank(),
-    axis.ticks.x = element_blank(),panel.grid = element_blank()
-  ) +
-  scale_fill_gradientn(
-    colours = c("navy", "white", "firebrick", "firebrick"),
-    values = scales::rescale(c(0, 14.99, 15,20)),  # Extend scale beyond 15
-    limits = c(0, max(Genes$value)),  # Adjust to your data range
-    oob = scales::squish,  # Keep values >100 at max color
-    name = "CV (%)"
-  ) +
-  facet_grid(Full_Type ~ Gene, scales = "free", space = "free", switch = "both") + theme(axis.title = element_blank())+scale_y_discrete(position="right")
 
 ```

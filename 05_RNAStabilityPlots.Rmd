@@ -1,0 +1,106 @@
+---
+title: "Score summary plots"
+output: html_document
+date: "2025-02-18"
+---
+
+# Set up
+```{r}
+rm(list=ls())
+library(tidyverse)
+source("~/Documents/Projects/tutivia_AV_paper_2025/AV_Plots.R")
+
+Data<-read.csv("/Users/alinaklineschoder/Desktop/Data_AnalyticalValidation_Organized/CVs.csv")%>%
+  filter(grepl("RNA Stability",Type))
+
+AllScores<-read.csv("/Users/alinaklineschoder/Desktop/Data_AnalyticalValidation_Organized/FinalScores.csv")%>%
+  dplyr::select(-c("X"))
+Vec<-AllScores$Score
+names(Vec)<-AllScores$Sample
+SampleInfo<-read.csv("/Users/alinaklineschoder/Desktop/AVSampleKey.csv")
+AllScores$Sample.Name=AllScores$Sample
+
+Full<-left_join(AllScores,SampleInfo)
+
+StorageLab<-expression(bold("-80" * degree * "C Storage Time"))
+StorageLab2<-expression(bold("-80" * degree * "C Storage Time (Months)"))
+
+```
+
+# Time
+```{r}
+Time<-Data%>%filter(grepl("Time",Type))%>%
+  filter(!grepl("d",name))%>%
+  mutate(name=gsub("mo","",name))%>%
+  mutate(name=factor(name,levels=c("1","3","6","12")))%>%
+  mutate(Control=gsub("CP","",Control))
+
+ggp_Time<-CVPlot_New(Time)
+
+Time<-Full %>% 
+  filter(Category == "RNAStabilityTime")%>%
+  mutate(Parameter=gsub("D","d",Parameter))%>%
+  mutate(Parameter=gsub("M","mo",Parameter))%>%
+  mutate(Parameter=gsub("17","15",Parameter))%>%
+  mutate(Parameter=factor(Parameter,levels=c("T0","5d","15d","1mo","3mo","6mo","12mo")))
+
+ggp_Time_Score<-ScorePlot(Time)+xlab(StorageLab)
+```
+
+# Freeze/Thaw
+```{r}
+FT<-Data%>%filter(grepl("Freeze",Type))%>%
+  mutate(name=gsub("FT","",name))%>%
+  filter(name!="1")%>%
+  mutate(Control=gsub("CP","",Control))
+
+CV_ggp_FT<-CVPlot_New(FT)
+
+FT<-Full %>% 
+  filter(Category == "RNAStabilityFT")%>%
+  mutate(Parameter=gsub("FT","",Parameter))%>%
+  mutate(Parameter=factor(Parameter,levels=c("1","2")))
+
+ggp_FT_Score<-ScorePlot(FT)+xlab("Freeze/Thaw (Cycles)")
+```
+
+
+
+```{r}
+# Define the title theme
+title_theme <- theme(
+  plot.title = element_text(face = "bold"),
+  legend.position = "none",
+  plot.margin = margin(0, 0, 0, 0, "cm")
+)
+
+# Adjust the plots with consistent sizing and titles
+adjusted_plots <- list(
+  CV_ggp_FT + ggtitle("Freeze/Thaw") + title_theme + theme(panel.spacing = unit(0, "cm"))+theme(strip.text.x = element_blank()),
+  ggp_Time + ggtitle(StorageLab2) + title_theme + theme(axis.text.y = element_blank(), panel.spacing = unit(0, "cm")),
+  ggp_FT_Score + ggtitle("Freeze/Thaw") + title_theme + theme(panel.spacing = unit(0, "cm"),axis.title.y=element_text(vjust=-20))+theme(plot.title = element_blank()),
+  ggp_Time_Score + ggtitle(StorageLab) + title_theme + theme(axis.text.y = element_blank(), axis.title.y = element_blank(), panel.spacing = unit(0, "cm"))+theme(plot.title = element_blank())
+)
+
+# Extract the legends
+CP_Leg <- ggpubr::get_legend(ggp_FT_Score + theme(legend.position = "top"))
+CV_Leg <- ggpubr::get_legend(CV_ggp_FT + theme(legend.position = "top", legend.key.height = unit(1, "mm")))
+
+
+Full <- (
+  (adjusted_plots[[1]] | adjusted_plots[[2]]) / 
+  CV_Leg / 
+  (adjusted_plots[[3]] | adjusted_plots[[4]]) / 
+  CP_Leg
+) +
+  plot_layout(
+    heights = c(1, 0.1, 1, 0.1),
+    widths = c(1, 1.5),
+    guides = "collect"
+  ) & 
+  theme(plot.margin = margin(0.25, 0.25, 0.25, 0.25, "cm"))
+
+ggsave(plot=Full,filename = "/Users/alinaklineschoder/Desktop/Data_AnalyticalValidation_Organized/Figures/RNAStability.png",bg="white",width = 8,height = 8)
+```
+
+

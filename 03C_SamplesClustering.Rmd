@@ -8,7 +8,7 @@ date: "2025-02-18"
 ```{r}
 rm(list=ls())
 library(tidyverse)
-source("~/Documents/Projects/AnalyticalValidation/AV_Plots.R")
+source("~/Documents/Projects/tutivia_AV_paper_2025/AV_Plots.R")
 
 
 ```
@@ -17,6 +17,7 @@ source("~/Documents/Projects/AnalyticalValidation/AV_Plots.R")
 ```{r}
 AllCounts<-read.csv("/Users/alinaklineschoder/Desktop/Data_AnalyticalValidation_Organized/FinalCounts.csv")%>%
   dplyr::select(-c("X"))%>%
+  filter(gene%in%include)%>%
   column_to_rownames(var="gene")
 
 SampleInfo<-read.csv("/Users/alinaklineschoder/Desktop/AVSampleKey.csv")%>%
@@ -55,16 +56,16 @@ library(dplyr)
 library(rlang)
 
 # Filter genes by variance
-gene_var <- apply(AllCounts, 1, var)
-Count_Filt <- AllCounts[gene_var > 0.5, ]
+#gene_var <- apply(AllCounts, 1, var)
+#Count_Filt <- AllCounts[gene_var > 0.5, ]
 
 # Transpose and log-transform
-counts_t <- t(Count_Filt)
-log_counts <- log1p(counts_t)
+counts_t <- t(AllCounts)
+#log_counts <- log1p(counts_t)
 
 
 # PCA
-pca_result <- prcomp(log_counts, scale. = TRUE)
+pca_result <- prcomp(counts_t, scale. = TRUE)
 
 # Put result in a data frame
 pca_df <- data.frame(PC1 = pca_result$x[,1],
@@ -87,7 +88,7 @@ ggpA<- ggplot(pca_df, aes(x = PC1, y = PC2)) +
     stat_ellipse(data = pca_df,
                  aes(color = as.factor(Control))) +
     theme_minimal() +
-    theme(legend.position = "none",
+    theme(legend.position = "bottom",
           panel.grid = element_blank(),
           axis.text = element_blank(),
           axis.title = element_blank(),
@@ -146,7 +147,7 @@ final_plot <- plot_grid(plotlist = rows_with_labels, ncol = 1, align = "h")
 
 # Print the final figure
 
-cowplot::plot_grid(ggpA,final_plot+theme(plot.margin = margin(0,0,0,10)),nrow=1,labels = c("A","B"))
+cowplot::plot_grid(ggpA+theme(legend.title = element_blank()),final_plot+theme(plot.margin = margin(0,0,0,10)),nrow=1,labels = c("A","B"))
 
 ```
 

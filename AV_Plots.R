@@ -119,24 +119,59 @@ CVPlot<-function(Filt){
   return(ggp)
 }
 
-ScorePlot<-function(Full){
-  ggp<-ggplot(Full, 
-         aes(y = Score, x = Parameter, color = Control, group = Control)) +
-    # Horizontal cutoff line at 50
-    geom_hline(yintercept = 50, linetype = "dashed", color = "red", size = 0.8) +
-    # Plot points and lines
-    geom_point() +
-    geom_line() +
+ScorePlot<-function(Full,error=F){
+  if(error){
+    ggp<-ggplot(Full, aes(x = Control, y = Score, shape = Parameter, color = Control)) +
+      geom_boxplot(aes(group = interaction(Control, Parameter)), 
+                   position = position_dodge(width = 0.75), 
+                   outlier.shape = NA, size = 0.1,width = 0.5) +
+      geom_jitter(position = position_dodge(width = 0.75), size = 0.5)
+  }else{
+    ggp<-ggplot(Full,
+                aes(y = Score, x = Parameter, color = Control, group = Control))+
+      geom_point() +
+      geom_line()
+  }
+  ggp<-ggp +
+    geom_hline(yintercept = 40, linetype = "dashed", color = "red", size = 0.8) +
+    geom_hline(yintercept = 60, linetype = "dashed", color = "red", size = 0.8) +
     scale_color_manual(values = col) + 
     ylim(0, 100) +
-    # Labels for "High" and "Low"
     annotate("text", x = Inf, y = 100, label = "High Risk", hjust = 1.1, vjust = 1, 
              size = 3, fontface = "bold", color = "black") +
     annotate("text", x = Inf, y = 0, label = "Low Risk", hjust = 1.1, vjust = 0, 
-             size = 3, fontface = "bold", color = "black")+ 
+             size = 3, fontface = "bold", color = "black") +
+    annotate("text", x = Inf, y = 50, label = "Intermediate Risk", hjust = 1.1, vjust = 0, 
+               size = 3, fontface = "bold", color = "black")+ 
     ylab("Tutivia\u2122 Risk Score")+
-    Paired_Theme
+    Paired_Theme+
+    guides(color = guide_legend(nrow = 1))
   
   return(ggp)
   
+}
+
+CVPlot_New<-function(Data){
+  
+  ggp <- ggplot(Data, aes(y = Gene, x = Control, fill = value)) +
+    geom_tile() +
+    facet_grid(. ~ name, scales = "free", space = "free") +
+    theme_minimal() +
+    theme(
+      legend.position = "right",
+      strip.text.y.left = element_text(angle = 0, hjust = 1),
+      strip.text.x = element_text(angle = 0, size = 10),
+      strip.background = element_blank(),
+      axis.ticks.x = element_line(),
+      panel.grid = element_blank()
+    ) +
+    scale_fill_gradientn(
+      colours = c("navy", "white", "firebrick"),
+      values = c(0, 15 / 20, 15 / 20, 1),  # Dynamic gradient with fixed cutoff at 15
+      limits = c(0, 20),  # Set upper limit to 20 to ensure red cutoff
+      oob = scales::squish,  # Ensure values above 15 stay red
+      name = "CV (%)"
+    ) +
+    theme(axis.title = element_blank())
+  return(ggp)
 }
