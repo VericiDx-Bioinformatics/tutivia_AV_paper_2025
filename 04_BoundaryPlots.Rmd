@@ -1,5 +1,5 @@
 ---
-title: "Score summary plots"
+title: "Boundary Plots"
 output: html_document
 date: "2025-02-18"
 ---
@@ -8,20 +8,21 @@ date: "2025-02-18"
 ```{r}
 rm(list=ls())
 library(tidyverse)
-source("~/Documents/Projects/tutivia_AV_paper_2025/AV_Plots.R")
+source("~/Documents/Projects/Tutivia/tutivia_AV_paper_2025/AV_Plots.R")
 
-Data<-read.csv("/Users/alinaklineschoder/Desktop/Data_AnalyticalValidation_Organized/CVs.csv")%>%
+Data<-read.csv("/Users/alinaklineschoder/Desktop/Data/AnalyticalValidation/Data_AnalyticalValidation_Organized/CVs.csv")%>%
   filter(grepl("I",name)|grepl("N",name))%>%
   mutate(Control=gsub("CP","",Control))
 
-AllScores<-read.csv("/Users/alinaklineschoder/Desktop/Data_AnalyticalValidation_Organized/FinalScores.csv")%>%
+AllScores<-read.csv("/Users/alinaklineschoder/Desktop/Data/AnalyticalValidation/Data_AnalyticalValidation_Organized/FinalScores.csv")%>%
   dplyr::select(-c("X"))
 Vec<-AllScores$Score
 names(Vec)<-AllScores$Sample
-SampleInfo<-read.csv("/Users/alinaklineschoder/Desktop/AVSampleKey.csv")
+SampleInfo<-read.csv("/Users/alinaklineschoder/Desktop/Data/AnalyticalValidation/AVSampleKey.csv")
 AllScores$Sample.Name=AllScores$Sample
 
 Full<-left_join(AllScores,SampleInfo)
+Data$Gene<-recode_genes(Data$Gene)
 ```
 
 # Library Input
@@ -30,11 +31,11 @@ LI<-Data%>%filter(grepl("LI",name))%>%
   mutate(name=gsub("LI","",name))%>%
   mutate(name=gsub("075","07.5",name))%>%
   mutate(name=as.numeric(name))%>%
-  mutate(name=paste(as.character(round(name, 1)),"pM"))%>%
-  mutate(name=factor(name,levels=c("607.5 pM","675 pM","750 pM","825 pM","907.5 pM")))%>%
+  mutate(name=paste(as.character(round(name, 1))))%>%
+  mutate(name=factor(name,levels=c("607.5","675","750","825","907.5")))%>%
   filter(name!="750 pM")
 
-ggp_LI<-CVPlot_New(LI)
+ggp_LI<-CVPlot_New(LI)+xlab("Library Input (pM cDNA)")
 
 LI<-Full %>% filter(Category == "LibraryInput")%>%
   mutate(Parameter=gsub("LI","",Parameter))%>%
@@ -43,24 +44,23 @@ LI<-Full %>% filter(Category == "LibraryInput")%>%
   #mutate(Parameter=paste(as.character(round(Parameter, 1)),"pM"))%>%
   mutate(Parameter=factor(Parameter,levels=c("607.5","675","750","825","907.5")))
 
-ggp_LI_Score<-ScorePlot(LI)+xlab("Library Input (pM cDNA)")
+ggp_LI_Score<-ScorePlot(LI,ideal_range = "750")+xlab("Library Input (pM cDNA)")
 ```
 
 # RNA Input
 ```{r}
 RI<-Data%>%filter(grepl("RI",name))%>%
   mutate(name=gsub("RI","",name))%>%
-  mutate(name=paste(name,"ng"))%>%
-  mutate(name=factor(name,levels=c("320 ng","400 ng","500 ng","600 ng","720 ng")))%>%
+  mutate(name=factor(name,levels=c("320","400","500","600","720")))%>%
   filter(name!="500 ng")
 
-ggp_RI<-CVPlot_New(RI)
+ggp_RI<-CVPlot_New(RI)+xlab("RNA Input (ng)")
 
 RI<-Full %>% filter(Category == "RNAInput")%>%
   mutate(Parameter=gsub("RI","",Parameter))%>%
   mutate(Parameter=factor(Parameter,levels=c("320","400","500","600","720")))
 
-ggp_RI_Score<-ScorePlot(RI)+xlab("RNA Input (ng)")
+ggp_RI_Score<-ScorePlot(RI,ideal_range = "500")+xlab("RNA Input (ng)")
 ```
 
 # Depth
@@ -74,7 +74,7 @@ Depth<-Data%>%filter(grepl("^N",name))%>%
   mutate(name=factor(name,levels=c("6.25M","10.25M","12.5M","16M","25M")))%>%
   filter(name!="12.5M")
 
-ggp_Depth<-CVPlot_New(Depth)
+ggp_Depth<-CVPlot_New(Depth)+xlab("Sequencing Depth (Reads)")
 
 Depth<-Full %>% filter(Category == "Batch")%>%
   mutate(Parameter=gsub("N32","12.5M",Parameter))%>%
@@ -84,7 +84,7 @@ Depth<-Full %>% filter(Category == "Batch")%>%
   mutate(Parameter=gsub("N16","25M",Parameter))%>%
   mutate(Parameter=factor(Parameter,levels=c("6.25M","10.25M","12.5M","16M","25M")))
 
-ggp_Depth_Score<-ScorePlot(Depth)+xlab("Sequencing Depth (Reads)")
+ggp_Depth_Score<-ScorePlot(Depth,ideal_range = "12.5M")+xlab("Sequencing Depth (Reads)")
 ```
 
 # DNAse
@@ -94,66 +94,66 @@ DNAse<-Data%>%filter(grepl("DNA",name))%>%
          name=gsub("W_DNASE","With DNASE I",name))%>%
   filter(name!="With DNASE I")
 
-ggp_DNAse<-CVPlot_New(DNAse)
+ggp_DNAse<-CVPlot_New(DNAse)+xlab("Interference (DNASE I)")
 
 dnase<-Full %>% filter(Category == "Interference")%>%
   mutate(Parameter=gsub("WO","-DNASE I",Parameter),
          Parameter=gsub("W","+DNASE I",Parameter))%>%
   mutate(Parameter=factor(Parameter,levels=c("-DNASE I","+DNASE I")))
 
-ggp_Interfer_Score<-ScorePlot(dnase)+xlab("DNASE I")
+ggp_Interfer_Score<-ScorePlot(dnase,ideal_range = "+DNASE I")+xlab("DNASE I")
 ```
 
-# putting together CV plots
+# final
 ```{r}
-
-
-
-```
-
-# library input
-```{r}
-library(ggplot2)
 library(patchwork)
 
-# Define the title theme
-title_theme <- theme(
-  plot.title = element_text(face = "bold"),
-  legend.position = "none",
-  plot.margin = margin(0, 0, 0, 0, "cm")
-)
+left_theme<-theme(legend.position = "none")
+other_theme<-theme(legend.position = "none",axis.text.y = element_blank(),axis.title.y = element_blank())
 
 # Adjust the plots with consistent sizing and titles
 adjusted_plots <- list(
-  ggp_DNAse + ggtitle("Interference") + title_theme + theme(panel.spacing = unit(0, "cm")),
-  ggp_LI + ggtitle("Library Input") + title_theme + theme(axis.text.y = element_blank(), panel.spacing = unit(0, "cm")),
-  ggp_RI + ggtitle("RNA Input") + title_theme + theme(axis.text.y = element_blank(), panel.spacing = unit(0, "cm")),
-  ggp_Depth + ggtitle("Sequencing Depth") + title_theme + theme(axis.text.y = element_blank(), panel.spacing = unit(0, "cm")),
-  ggp_Interfer_Score + ggtitle("Interference") + title_theme + theme(panel.spacing = unit(0, "cm"),axis.title.y=element_text(vjust=-20)),
-  ggp_LI_Score + ggtitle("Library Input") + title_theme + theme(axis.text.y = element_blank(), axis.title.y = element_blank(), panel.spacing = unit(0, "cm")),
-  ggp_RI_Score + ggtitle("RNA Input") + title_theme + theme(axis.text.y = element_blank(), axis.title.y = element_blank(), panel.spacing = unit(0, "cm")),
-  ggp_Depth_Score + ggtitle("Sequencing Depth") + title_theme + theme(axis.text.y = element_blank(), axis.title.y = element_blank(), panel.spacing = unit(0, "cm"))
+  ggp_DNAse + left_theme + theme(strip.text.x = element_blank()),
+  ggp_LI + other_theme,
+  ggp_RI + other_theme,
+  ggp_Depth + other_theme,
+  ggp_Interfer_Score + left_theme,
+  ggp_LI_Score + other_theme,
+  ggp_RI_Score + other_theme,
+  ggp_Depth_Score + other_theme
 )
-# Extract the legends
+
+
 CP_Leg <- ggpubr::get_legend(ggp_Interfer_Score + theme(legend.position = "top"))
 CV_Leg <- ggpubr::get_legend(ggp_DNAse + theme(legend.position = "top", legend.key.height = unit(1, "mm")))
+```
 
+```{r}
+Full1 <- (
+  (adjusted_plots[[1]] | adjusted_plots[[2]] | adjusted_plots[[3]] | adjusted_plots[[4]]) / 
+  CV_Leg
+  )+
+  plot_layout(
+    widths = c(1,5,5,4),
+    heights = c(1, 0.1),
+    guides = "collect"
+  ) & 
+  theme(plot.margin = margin(0.1, 0.1, 0.1, 0.1, "cm"))
+
+ggsave(plot=Full1,filename = "/Users/alinaklineschoder/Desktop/Data/AnalyticalValidation/Data_AnalyticalValidation_Organized/Figures/Boundary_P1.png",bg="white",width = 10,height = 5)
 
 Full <- (
-  (adjusted_plots[[1]] | adjusted_plots[[2]] | adjusted_plots[[3]] | adjusted_plots[[4]]) / 
-  CV_Leg / 
   (adjusted_plots[[5]] | adjusted_plots[[6]] | adjusted_plots[[7]] | adjusted_plots[[8]]) / 
   CP_Leg
-) +
+)+
   plot_layout(
-    heights = c(1, 0.1, 1, 0.1),  # Adjust row heights: first and third rows are main plots, second and fourth are legends
+    heights = c(1, 0.1),  # Adjust row heights: first and third rows are main plots, second and fourth are legends
     guides = "collect"
   ) & 
   theme(plot.margin = margin(0.25, 0.25, 0.25, 0.25, "cm"))
 
+ggsave(plot=Full,filename = "/Users/alinaklineschoder/Desktop/Data/AnalyticalValidation/Data_AnalyticalValidation_Organized/Figures/Boundary_P2.png",bg="white",width = 10,height = 5)
 
-ggsave(plot=Full,filename = "/Users/alinaklineschoder/Desktop/Data_AnalyticalValidation_Organized/Figures/Boundary.png",bg="white",width = 15,height = 10)
 ```
-
 
 

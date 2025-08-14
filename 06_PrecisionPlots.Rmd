@@ -1,5 +1,5 @@
 ---
-title: "Score summary plots"
+title: "Precision Plots"
 output: html_document
 date: "2025-02-18"
 ---
@@ -8,16 +8,19 @@ date: "2025-02-18"
 ```{r}
 rm(list=ls())
 library(tidyverse)
-source("~/Documents/Projects/tutivia_AV_paper_2025/AV_Plots.R")
+source("~/Documents/Projects/Tutivia/tutivia_AV_paper_2025/AV_Plots.R")
 
-df<-read.csv("/Users/alinaklineschoder/Desktop/Data_AnalyticalValidation_Organized/CVs.csv")%>%
+df<-read.csv("/Users/alinaklineschoder/Desktop/Data/AnalyticalValidation/Data_AnalyticalValidation_Organized/CVs.csv")%>%
   filter(grepl("Rep",Type))
 
-AllScores<-read.csv("/Users/alinaklineschoder/Desktop/Data_AnalyticalValidation_Organized/FinalScores.csv")%>%
+df$Gene<-recode_genes(df$Gene)
+
+
+AllScores<-read.csv("/Users/alinaklineschoder/Desktop/Data/AnalyticalValidation/Data_AnalyticalValidation_Organized/FinalScores.csv")%>%
   dplyr::select(-c("X"))
 Vec<-AllScores$Score
 names(Vec)<-AllScores$Sample
-SampleInfo<-read.csv("/Users/alinaklineschoder/Desktop/AVSampleKey.csv")
+SampleInfo<-read.csv("/Users/alinaklineschoder/Desktop/Data/AnalyticalValidation/AVSampleKey.csv")
 AllScores$Sample.Name=AllScores$Sample
 
 Full<-left_join(AllScores,SampleInfo)
@@ -25,7 +28,7 @@ Full<-left_join(AllScores,SampleInfo)
 
 # CV of genes
 ```{r}
-boxwisk<-ggplot(df%>%filter(Type=="Repeatability"), aes(x=value, y=Gene)) +
+boxwisk<-ggplot(df%>%filter(Type=="Repeatability")%>%filter(name!="Mean"), aes(x=value, y=Gene)) +
   geom_boxplot(outlier.shape = NA,size=0.1) +
   geom_jitter(aes(color=Control),size=0.5)+
   facet_grid(.~Control, scales="free_y") +
@@ -33,18 +36,12 @@ boxwisk<-ggplot(df%>%filter(Type=="Repeatability"), aes(x=value, y=Gene)) +
   scale_color_manual(values=col)+
   CV_Theme+
   xlab("CV (%)") +
-  geom_vline(xintercept = 15, linetype = "dashed", size = 0.1) +
-    geom_text(data = df %>% filter(value > 15 & value < 20), 
+    geom_text(data = df %>% filter(value > 15), 
               aes(label = round(value, 1),color=Control), 
-              hjust = -0.2, 
-              size = 3, 
-              show.legend = FALSE)+
-    geom_text(data = df %>% filter(value > 20), 
-              aes(label = round(value, 1),color=Control), 
-              hjust = 1.3, 
-              size = 3, 
-              show.legend = FALSE)+Paired_Theme +
-  theme(legend.position = "none",strip.text.x = element_text(size=11,face="bold"))
+              hjust = -0.1, 
+              size = 2.5, 
+              show.legend = FALSE) +
+  theme(legend.position = "none",strip.text.x = element_text(size=11,face="bold"))+xlim(0,25)
 ```
 
 # Scores
@@ -56,25 +53,90 @@ FT<-Full %>%
 ggp_FT_Score<-ScorePlot(FT,error=T)
 ```
 
+# Scores - levey plot
+```{r}
+FT$Parameter<-gsub("L","Lane ",FT$Parameter)
+FT$Parameter<-gsub("1R","1 Run ",FT$Parameter)
+FT$Parameter<-gsub("2R","2 Run ",FT$Parameter)
+facet_means <- FT %>%
+  group_by(Control, Parameter) %>%
+  summarise(mean_score = mean(Score, na.rm = TRUE), .groups = "drop",SD=sd(Score, na.rm = TRUE))%>%
+  mutate(up=mean_score+2*SD,
+         down=mean_score-2*SD)%>%
+  pivot_longer(cols=c(up,down),names_to = "line",values_to = "value")
+
+overall_variability<-FT%>%
+  group_by(Control) %>%
+  summarise(mean_score = mean(Score, na.rm = TRUE), .groups = "drop",SD=sd(Score, na.rm = TRUE))%>%
+  mutate(up=mean_score+2*SD,
+         down=mean_score-2*SD)%>%
+  pivot_longer(cols=c(up,down),names_to = "line",values_to = "value")
+
+ggp<-ggplot(FT, aes(x = rem, y = Score)) +
+  CV_Theme+
+  theme(panel.border = element_rect(fill = NA))+
+  geom_point(aes(color=Control)) +
+  facet_grid(Control ~ Parameter)+
+  geom_hline(data = facet_means,
+             aes(yintercept = value),
+             color = "black",
+             linewidth = 0.25)+
+  geom_hline(data = overall_variability,
+             aes(yintercept = value),
+             color = "orange",
+             linewidth = 0.25,
+             linetype = "dashed")+
+  scale_color_manual(values=col)+
+  ylim(0, 100)+
+  ylab("Tutivia\u2122 Risk Score")+
+  theme(legend.position = "none",strip.text = element_text(size=12),
+        panel.spacing = unit(0.1, "cm"))+
+  xlab("")
+
+
+# Sample data
+hlines <- data.frame(
+  yintercept = c(0.5, -0.5),
+  label = c("CP Overall Variability", "Within Day Variability")
+)
+
+Leg<-ggplot() +
+  geom_point() +
+  geom_hline(data = hlines, 
+             aes(yintercept = yintercept, 
+                 color = label, 
+                 linetype = label),
+             linewidth = 0.5) +
+  scale_color_manual(values = c(
+    "CP Overall Variability" = "orange",
+    "Within Day Variability" = "black"
+  )) +
+  scale_linetype_manual(values = c(
+    "CP Overall Variability" = "dashed",
+    "Within Day Variability" = "solid"
+  )) +
+  theme_minimal() +
+  labs(color = NULL, linetype = NULL)+
+  theme(legend.position = "right")
+
+ggfinal<-cowplot::plot_grid(ggp,cowplot:::get_legend(Leg),nrow=2,rel_heights = c(1,0.1))
+
+ggsave(plot=ggfinal,filename = "/Users/alinaklineschoder/Desktop/Data/AnalyticalValidation/Data_AnalyticalValidation_Organized/Figures/Precision_P3.png",bg="white",width = 10,height = 8)
+```
+
+
+
 
 ```{r}
-# Adjust the plots with consistent sizing and titles
-adjusted_plots <- list(
-  boxwisk+theme(legend.position = "none"),
-  ggp_FT_Score+theme(legend.position = "none")+theme(axis.title.y=element_text(vjust=-20)))
+boxwisk<-boxwisk+theme(legend.position = "none")
 
-# Extract the legends
+ggsave(plot=boxwisk,filename = "/Users/alinaklineschoder/Desktop/Data/AnalyticalValidation/Data_AnalyticalValidation_Organized/Figures/Precision_P1.png",bg="white",width = 8,height = 5)
 
-Full <- (
-  adjusted_plots[[1]] / 
-  adjusted_plots[[2]]
-  ) +
-  plot_layout(
-    guides = "collect"
-  ) & 
-  theme(plot.margin = margin(0.25, 0.25, 0.25, 0.25, "cm"))
+ggp_FT_Score<-ggp_FT_Score+theme(legend.position = "none")
 
-ggsave(plot=Full,filename = "/Users/alinaklineschoder/Desktop/Data_AnalyticalValidation_Organized/Figures/Precision.png",bg="white",width = 8,height = 8)
+ggsave(plot=ggp_FT_Score,filename = "/Users/alinaklineschoder/Desktop/Data/AnalyticalValidation/Data_AnalyticalValidation_Organized/Figures/Precision_P2.png",bg="white",width = 10,height = 5)
 ```
+
+
 
 

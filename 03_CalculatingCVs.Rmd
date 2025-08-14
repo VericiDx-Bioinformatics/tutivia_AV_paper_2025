@@ -1,5 +1,5 @@
 ---
-title: "combining tpm and prediction for all samples"
+title: "Calculating CVs"
 output: html_document
 date: "2025-02-18"
 ---
@@ -8,16 +8,16 @@ date: "2025-02-18"
 ```{r}
 rm(list=ls())
 library(tidyverse)
-source("~/Documents/Projects/tutivia_AV_paper_2025/AV_Plots.R")
+source("~/Documents/Projects/Tutivia/tutivia_AV_paper_2025/AV_Plots.R")
 ```
 
 # Read in counts
 ```{r}
-AllCounts<-read.csv("/Users/alinaklineschoder/Desktop/Data_AnalyticalValidation_Organized/FinalCounts.csv")%>%
+AllCounts<-read.csv("/Users/alinaklineschoder/Desktop/Data/AnalyticalValidation/Data_AnalyticalValidation_Organized/FinalCounts.csv")%>%
   dplyr::select(-c("X"))%>%
   column_to_rownames(var="gene")
 
-SampleInfo<-read.csv("/Users/alinaklineschoder/Desktop/AVSampleKey.csv")%>%
+SampleInfo<-read.csv("/Users/alinaklineschoder/Desktop/Data/AnalyticalValidation/AVSampleKey.csv")%>%
   filter(Sample.Name!="CP3_Batch_N16")
 
 AllCounts<-AllCounts[include,]
@@ -191,19 +191,34 @@ Repro<-left_join(Repro_Counts,Repro_Meta)%>%
   mutate(Type="Reproducibility")
 ```
 
+### Table 9. AV Repro
+```{r}
+Repro_Meta<-SampleInfo%>%filter(Category%in%c("BXRepeat","Repeatability"))%>%
+  dplyr::select(Sample.Name,Control,Parameter)%>%
+  filter(Parameter%in%c("L1R1","L1R1_5","L1R2","L1R2_5","L2R1","L2R1_5","L2R2","L2R2_5"))
+
+Repro_Counts<-AllCounts[,Repro_Meta$Sample.Name]%>%
+  rownames_to_column(var="Gene")%>%
+  pivot_longer(cols=setdiff(colnames(.),"Gene"),names_to = "Sample.Name")
+
+AVRepro<-left_join(Repro_Counts,Repro_Meta)%>%
+  dplyr::select(-c(Sample.Name))%>%
+  pivot_wider(names_from = Parameter,values_from = value)%>%
+  rowwise()%>%
+  mutate(L1R1=100*sd(c(L1R1,L1R1_5))/mean(L1R1,L1R1_5),
+         L1R2=100*sd(c(L1R2,L1R2_5))/mean(L1R2,L1R2_5),
+         L2R1=100*sd(c(L2R1,L2R1_5))/mean(L2R1,L2R1_5),
+         L2R2=100*sd(c(L2R2,L2R2_5))/mean(L2R2,L2R2_5))%>%
+  select(Gene,L1R1,L1R2,L2R1,L2R2,Control)%>%
+  mutate(Type="AVRepro")
+```
+
+
 ## Combining All tables
 ```{r}
-AllTabs<-bind_rows(FT,Time,DNAse,RI,LI,Batch,Repeat,Repro)%>%
+AllTabs<-bind_rows(FT,Time,DNAse,RI,LI,Batch,Repeat,Repro,AVRepro)%>%
   pivot_longer(cols=setdiff(colnames(.),c("Gene","Control","Type")))%>%
   filter(!is.na(value))
 
-write.csv(AllTabs,"/Users/alinaklineschoder/Desktop/Data_AnalyticalValidation_Organized/CVs.csv")
-```
-
-## Plotting the chosen genes summary
-```{r}
-
-
-
-
+write.csv(AllTabs,"/Users/alinaklineschoder/Desktop/Data/AnalyticalValidation/Data_AnalyticalValidation_Organized/CVs.csv")
 ```

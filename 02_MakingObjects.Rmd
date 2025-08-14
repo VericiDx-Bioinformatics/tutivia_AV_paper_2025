@@ -12,15 +12,15 @@ library(tidyverse)
 
 # Identification Table
 ```{r}
-SampleKey<-read.csv("/Users/alinaklineschoder/Desktop/AVSampleKey.csv")%>%
+SampleKey<-read.csv("/Users/alinaklineschoder/Desktop/Data/AnalyticalValidation/AVSampleKey.csv")%>%
   separate_longer_delim(col="Samples..mean.if.multiple.",delim = ",")%>%
   dplyr::mutate(Samples..mean.if.multiple.=gsub(" ","",Samples..mean.if.multiple.))
 
-AllCounts<-read.csv("/Users/alinaklineschoder/Desktop/Data_AnalyticalValidation_Organized/AllCounts.csv")%>%
+AllCounts<-read.csv("/Users/alinaklineschoder/Desktop/Data/AnalyticalValidation/Data_AnalyticalValidation_Organized/AllCounts.csv")%>%
   column_to_rownames(var="Gene")
 
 
-AllScores<-read.csv("/Users/alinaklineschoder/Desktop/Data_AnalyticalValidation_Organized/AllScores.csv")
+AllScores<-read.csv("/Users/alinaklineschoder/Desktop/Data/AnalyticalValidation/Data_AnalyticalValidation_Organized/AllScores.csv")
 
 Vec<-AllScores$AR_Risk_Score
 names(Vec)<-gsub("-","\\.",AllScores$X)
@@ -50,7 +50,7 @@ for(sample in unique(SampleKey$Sample.Name)){
   }
 }
 
-write.csv(Full,"/Users/alinaklineschoder/Desktop/Data_AnalyticalValidation_Organized/FinalScores.csv")
+write.csv(Full,"/Users/alinaklineschoder/Desktop/Data/AnalyticalValidation/Data_AnalyticalValidation_Organized/FinalScores.csv")
 ```
 
 
@@ -78,7 +78,7 @@ for(sample in unique(SampleKey$Sample.Name)){
   
 }
 
-write.csv(Full,"/Users/alinaklineschoder/Desktop/Data_AnalyticalValidation_Organized/FinalCounts.csv")
+write.csv(Full,"/Users/alinaklineschoder/Desktop/Data/AnalyticalValidation/Data_AnalyticalValidation_Organized/FinalCounts.csv")
 
 ```
 

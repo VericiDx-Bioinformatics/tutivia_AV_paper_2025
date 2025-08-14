@@ -1,0 +1,138 @@
+---
+title: "Precision Plots"
+output: html_document
+date: "2025-02-18"
+---
+
+# Set up
+```{r}
+rm(list=ls())
+library(tidyverse)
+source("~/Documents/Projects/Tutivia/tutivia_AV_paper_2025/AV_Plots.R")
+
+df<-read.csv("/Users/alinaklineschoder/Desktop/Data/AnalyticalValidation/Data_AnalyticalValidation_Organized/CVs.csv")%>%
+  filter(grepl("AVRepro",Type))
+
+df$Gene<-recode_genes(df$Gene)
+
+AllScores<-read.csv("/Users/alinaklineschoder/Desktop/Data/AnalyticalValidation/Data_AnalyticalValidation_Organized/FinalScores.csv")%>%
+  dplyr::select(-c("X"))
+Vec<-AllScores$Score
+names(Vec)<-AllScores$Sample
+SampleInfo<-read.csv("/Users/alinaklineschoder/Desktop/Data/AnalyticalValidation/AVSampleKey.csv")
+AllScores$Sample.Name=AllScores$Sample
+
+Full<-left_join(AllScores,SampleInfo)
+```
+
+# CV of genes
+```{r}
+ggp<-ggplot(df, aes(x=value, y=Gene)) +
+  geom_boxplot(outlier.shape = NA,size=0.1) +
+  geom_jitter(aes(color=Control),size=0.5)+
+  facet_grid(.~Control, scales="free_y") +
+  theme_minimal() +
+  scale_color_manual(values=col)+
+  CV_Theme+
+  xlab("CV (%)") +
+  theme(legend.position = "none",strip.text.x = element_text(size=11,face="bold"))+xlim(-0.1,5)+
+    geom_text(data = df %>% filter(value > 0.05), 
+              aes(label = round(value, 2),color=Control), 
+              hjust = -0.2, 
+              size = 3, 
+              show.legend = FALSE)
+
+
+ggsave(plot=ggp,filename = "/Users/alinaklineschoder/Desktop/Data/AnalyticalValidation/Data_AnalyticalValidation_Organized/Figures/BX_P2.png",bg="white",width = 10,height = 5)
+
+```
+
+# Scores
+```{r}
+library(dplyr)
+library(tidyr)
+library(purrr)
+library(ggplot2)
+
+# Minor axis: keep fixed or make proportional (e.g., minor_ratio * major)
+minor_ratio <- 0.5  # set to e.g. 0.5 for minor = 0.5*major; or set a constant minor instead
+
+ellipse_coords <- function(cx, cy, width, height, theta, npoints = 200){
+  t  <- seq(0, 2*pi, length.out = npoints)
+  ex <- (width/2)*cos(t)
+  ey <- (height/2)*sin(t)
+  tibble(
+    x = cx +  cos(theta)*ex - sin(theta)*ey,
+    y = cy +  sin(theta)*ex + cos(theta)*ey
+  )
+}
+
+FT<-Full%>%
+  filter(Parameter%in%c("L1R1","L1R1_5","L2R1","L2R1_5","L1R2","L1R2_5","L2R2","L2R2_5"))%>%
+  select(Category,Control,Score,Parameter)%>%
+  mutate(Parameter=gsub("_.*","",Parameter))%>%
+  pivot_wider(names_from = Category,values_from = Score)
+
+# A = closest to origin, B = furthest from origin (per group)
+with_d <- FT %>% 
+  mutate(dist0 = sqrt(BXRepeat^2 + Repeatability^2))
+
+Apts <- with_d %>%
+  group_by(Control) %>%
+  slice_min(dist0, n = 1, with_ties = FALSE) %>%
+  ungroup() %>%
+  transmute(Control, Ax = BXRepeat, Ay = Repeatability)
+
+Bpts <- with_d %>%
+  group_by(Control) %>%
+  slice_max(dist0, n = 1, with_ties = FALSE) %>%
+  ungroup() %>%
+  transmute(Control, Bx = BXRepeat, By = Repeatability)
+
+# Params per group
+ell_params <- Apts %>%
+  inner_join(Bpts, by = "Control") %>%
+  mutate(
+    # center at the midpoint of A and B
+    cx = (Ax + Bx)/2,
+    cy = (Ay + By)/2,
+    # orientation and size
+    theta = atan2(By - Ay, Bx - Ax),
+    AB    = sqrt((Bx - Ax)^2 + (By - Ay)^2),
+    major = 1.1 * AB,
+    minor = minor_ratio * major   # or set minor <- 0.8 for fixed height
+  )
+
+# Build ellipse paths
+ellipses <- ell_params %>%
+  mutate(coords = pmap(list(cx, cy, major, minor, theta),
+                       ~ ellipse_coords(..1, ..2, ..3, ..4, ..5))) %>%
+  unnest(coords)
+
+# Plot
+ggp<-ggplot(FT, aes(BXRepeat, Repeatability, color = Control)) +
+    geom_hline(yintercept = 50, linetype = "dashed", color = "red", size = 0.8) +
+    geom_vline(xintercept = 50, linetype = "dashed", color = "red", size = 0.8) +
+  geom_point() +
+  geom_path(data = ellipses, aes(x, y, color = Control),
+            linewidth = 0.2, inherit.aes = FALSE) +
+  theme_minimal() +
+  scale_color_manual(values=col)+
+  CV_Theme+
+  xlab("Run 1 Tutivia\u2122 Risk Score") +
+  ylab("Run 2 Tutivia\u2122 Risk Score") +
+  theme(legend.position = "none",strip.text.x = element_text(size=11,face="bold")) +
+    ylim(0, 100) +
+  xlim(0,100) +
+    annotate("text", x = 100, y = 100, label = "High Risk", hjust = 0.5, vjust = 0.5, 
+             size = 3, fontface = "bold", color = "black") +
+    annotate("text", x = 0, y = 0, label = "Low Risk", hjust = 0.5, vjust = 0.5, 
+             size = 3, fontface = "bold", color = "black")
+
+ggsave(plot=ggp,filename = "/Users/alinaklineschoder/Desktop/Data/AnalyticalValidation/Data_AnalyticalValidation_Organized/Figures/BX_P1.png",bg="white",width = 8,height = 8)
+
+```
+
+
+
+

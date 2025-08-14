@@ -13,7 +13,7 @@ library(tidyverse)
 
 # Loading and Saving from Data_AnalyticalValidation
 ```{r}
-loc<-"/Users/alinaklineschoder/Desktop/AV_Data/"
+loc<-"/Users/alinaklineschoder/Desktop/Data/AnalyticalValidation/AV_Data/"
 fi<-(list.files(loc))
 Runs<-gsub("_QC_Summary.csv","",fi[grepl("QC",fi)])
 
@@ -26,7 +26,6 @@ for(run in c("NextSeq2000_VL15-VL25_PQ_EIN23-001_2023-04-24_202304272035","92-93
   PRED_Fil<-FILES[grepl("prediction_tutivia.csv|prediction_tutevia.csv",FILES)]
   QC_Fil<-FILES[grepl("QC_Summary.csv",FILES)]
   if(length(QC_Fil)>0){
-    
     QC<-read.csv(QC_Fil)
     QC[] <- lapply(QC, as.character)
   }else{
@@ -50,9 +49,9 @@ for(run in c("NextSeq2000_VL15-VL25_PQ_EIN23-001_2023-04-24_202304272035","92-93
   
 }
 
-setwd("/Users/alinaklineschoder/Desktop/Data_AnalyticalValidation_Organized/")
+setwd("/Users/alinaklineschoder/Desktop/Data/AnalyticalValidation/Data_AnalyticalValidation_Organized/")
 write.csv(VST_All,file = "AllCounts.csv")
 
-setwd("/Users/alinaklineschoder/Desktop/Data_AnalyticalValidation_Organized/")
+setwd("/Users/alinaklineschoder/Desktop/Data/AnalyticalValidation/Data_AnalyticalValidation_Organized/")
 write.csv(PRED_All,file = "AllScores.csv")
 ```

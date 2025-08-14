@@ -1,5 +1,5 @@
 ---
-title: "Score summary plots"
+title: "RNA Stability Plots"
 output: html_document
 date: "2025-02-18"
 ---
@@ -8,23 +8,24 @@ date: "2025-02-18"
 ```{r}
 rm(list=ls())
 library(tidyverse)
-source("~/Documents/Projects/tutivia_AV_paper_2025/AV_Plots.R")
+source("~/Documents/Projects/Tutivia/tutivia_AV_paper_2025/AV_Plots.R")
 
-Data<-read.csv("/Users/alinaklineschoder/Desktop/Data_AnalyticalValidation_Organized/CVs.csv")%>%
+Data<-read.csv("/Users/alinaklineschoder/Desktop/Data/AnalyticalValidation/Data_AnalyticalValidation_Organized/CVs.csv")%>%
   filter(grepl("RNA Stability",Type))
 
-AllScores<-read.csv("/Users/alinaklineschoder/Desktop/Data_AnalyticalValidation_Organized/FinalScores.csv")%>%
+Data$Gene<-recode_genes(Data$Gene)
+
+AllScores<-read.csv("/Users/alinaklineschoder/Desktop/Data/AnalyticalValidation/Data_AnalyticalValidation_Organized/FinalScores.csv")%>%
   dplyr::select(-c("X"))
 Vec<-AllScores$Score
 names(Vec)<-AllScores$Sample
-SampleInfo<-read.csv("/Users/alinaklineschoder/Desktop/AVSampleKey.csv")
+SampleInfo<-read.csv("/Users/alinaklineschoder/Desktop/Data/AnalyticalValidation/AVSampleKey.csv")
 AllScores$Sample.Name=AllScores$Sample
 
 Full<-left_join(AllScores,SampleInfo)
 
 StorageLab<-expression(bold("-80" * degree * "C Storage Time"))
 StorageLab2<-expression(bold("-80" * degree * "C Storage Time (Months)"))
-
 ```
 
 # Time
@@ -67,40 +68,52 @@ ggp_FT_Score<-ScorePlot(FT)+xlab("Freeze/Thaw (Cycles)")
 
 
 ```{r}
-# Define the title theme
-title_theme <- theme(
-  plot.title = element_text(face = "bold"),
-  legend.position = "none",
-  plot.margin = margin(0, 0, 0, 0, "cm")
-)
-
 # Adjust the plots with consistent sizing and titles
 adjusted_plots <- list(
-  CV_ggp_FT + ggtitle("Freeze/Thaw") + title_theme + theme(panel.spacing = unit(0, "cm"))+theme(strip.text.x = element_blank()),
-  ggp_Time + ggtitle(StorageLab2) + title_theme + theme(axis.text.y = element_blank(), panel.spacing = unit(0, "cm")),
-  ggp_FT_Score + ggtitle("Freeze/Thaw") + title_theme + theme(panel.spacing = unit(0, "cm"),axis.title.y=element_text(vjust=-20))+theme(plot.title = element_blank()),
-  ggp_Time_Score + ggtitle(StorageLab) + title_theme + theme(axis.text.y = element_blank(), axis.title.y = element_blank(), panel.spacing = unit(0, "cm"))+theme(plot.title = element_blank())
+  CV_ggp_FT + 
+    ggtitle("Freeze/Thaw") + 
+    title_theme +
+    theme(strip.text.x = element_blank()),
+  ggp_Time + 
+    ggtitle(StorageLab2) + 
+    title_theme + 
+    theme(axis.text.y = element_blank()),
+  ggp_FT_Score + 
+    theme(axis.title.y=element_text(vjust=0),legend.position = "none"),
+  ggp_Time_Score + theme(axis.text.y = element_blank(), 
+                         axis.title.y = element_blank(),legend.position = "none")
 )
 
 # Extract the legends
 CP_Leg <- ggpubr::get_legend(ggp_FT_Score + theme(legend.position = "top"))
 CV_Leg <- ggpubr::get_legend(CV_ggp_FT + theme(legend.position = "top", legend.key.height = unit(1, "mm")))
+```
 
-
-Full <- (
+```{r}
+Full1 <- (
   (adjusted_plots[[1]] | adjusted_plots[[2]]) / 
-  CV_Leg / 
+  CV_Leg
+  )+
+  plot_layout(
+    heights = c(1, 0.1),
+    widths = c(1, 1.5), # Adjust row heights: first and third rows are main plots, second and fourth are legends
+    guides = "collect"
+  ) & 
+  theme(plot.margin = margin(0.25, 0.25, 0.25, 0.25, "cm"),axis.title.x = element_blank())
+
+ggsave(plot=Full1,filename = "/Users/alinaklineschoder/Desktop/Data/AnalyticalValidation/Data_AnalyticalValidation_Organized/Figures/RNAStability_P1.png",bg="white",width = 6,height = 4)
+
+Full1 <- (
   (adjusted_plots[[3]] | adjusted_plots[[4]]) / 
   CP_Leg
-) +
+  )+
   plot_layout(
-    heights = c(1, 0.1, 1, 0.1),
-    widths = c(1, 1.5),
+    heights = c(1, 0.1),
+    widths = c(1, 1.5), # Adjust row heights: first and third rows are main plots, second and fourth are legends
     guides = "collect"
   ) & 
   theme(plot.margin = margin(0.25, 0.25, 0.25, 0.25, "cm"))
 
-ggsave(plot=Full,filename = "/Users/alinaklineschoder/Desktop/Data_AnalyticalValidation_Organized/Figures/RNAStability.png",bg="white",width = 8,height = 8)
+ggsave(plot=Full1,filename = "/Users/alinaklineschoder/Desktop/Data/AnalyticalValidation/Data_AnalyticalValidation_Organized/Figures/RNAStability_P2.png",bg="white",width = 6,height = 4)
 ```
-
 
